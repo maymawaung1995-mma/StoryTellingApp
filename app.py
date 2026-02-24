@@ -46,3 +46,5 @@ if st.button("Generate Story"):
     else:
 
         st.warning("Please enter both theme and character name.")
+        st.write(st.secrets)
+
