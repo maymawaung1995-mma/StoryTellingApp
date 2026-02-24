@@ -2,7 +2,7 @@ import streamlit as st
 from openai import OpenAI
 
 # Initialize OpenAI client
-client = OpenAI(api_key="OPENAI_API_KEY")
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 st.title("Interactive AI Story Builder")
 
@@ -47,4 +47,5 @@ if st.button("Generate Story"):
 
         st.warning("Please enter both theme and character name.")
         st.write(st.secrets)
+
 
