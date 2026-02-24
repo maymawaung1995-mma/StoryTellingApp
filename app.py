@@ -17,9 +17,6 @@ if "page" not in st.session_state:
 if "story" not in st.session_state:
     st.session_state.story = None
 
-if "history" not in st.session_state:
-    st.session_state.history = []
-
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
@@ -27,7 +24,7 @@ if "dark_mode" not in st.session_state:
 mode_label = "🌙 Dark Mode" if not st.session_state.dark_mode else "☀ Light Mode"
 st.session_state.dark_mode = st.toggle(mode_label, value=st.session_state.dark_mode)
 
-# ---------------- Dynamic CSS ----------------
+# ---------------- Kindle Style ----------------
 if st.session_state.dark_mode:
     bg = "#1e1e1e"
     text = "#f5f5f5"
@@ -108,9 +105,7 @@ if st.session_state.page == "home":
                 messages=[{"role": "user", "content": prompt}],
             )
 
-        story = response.choices[0].message.content
-        st.session_state.story = story
-        st.session_state.history.append(story)
+        st.session_state.story = response.choices[0].message.content
         st.session_state.page = "reading"
         st.rerun()
 
@@ -119,114 +114,90 @@ elif st.session_state.page == "reading":
 
     st.title("Your Story")
 
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
-        ["Story", "Illustration", "Narration", "Continue", "History", "Exit"]
+    # Progress
+    word_count = len(st.session_state.story.split())
+    progress = min(word_count / 300, 1.0)
+
+    st.progress(progress)
+    st.caption(f"{word_count} / 300 words")
+
+    # Story
+    st.markdown(
+        f"<div class='story-box'>{st.session_state.story}</div>",
+        unsafe_allow_html=True
     )
 
-    # -------- STORY TAB --------
-    with tab1:
-        word_count = len(st.session_state.story.split())
-        progress = min(word_count / 300, 1.0)
-        st.progress(progress)
-        st.caption(f"{word_count} / 300 words")
+    st.markdown("---")
 
-        st.markdown(
-            f"<div class='story-box'>{st.session_state.story}</div>",
-            unsafe_allow_html=True
+    # Continue Section (Directly Under Story)
+    st.subheader("Continue the Story")
+
+    if st.button("Continue with Choice 1"):
+        with st.spinner("Turning the page..."):
+            continuation = client.chat.completions.create(
+                model="gpt-5.2",
+                messages=[{
+                    "role": "user",
+                    "content": f"Continue the following story in 150 words based on Choice 1:\n{st.session_state.story}"
+                }]
+            )
+
+        st.session_state.story = continuation.choices[0].message.content
+        st.rerun()
+
+    if st.button("Continue with Choice 2"):
+        with st.spinner("Turning the page..."):
+            continuation = client.chat.completions.create(
+                model="gpt-5.2",
+                messages=[{
+                    "role": "user",
+                    "content": f"Continue the following story in 150 words based on Choice 2:\n{st.session_state.story}"
+                }]
+            )
+
+        st.session_state.story = continuation.choices[0].message.content
+        st.rerun()
+
+    st.markdown("---")
+
+    # Voice
+    if st.button("🎧 Play Narration"):
+        with st.spinner("Narrating..."):
+            audio = client.audio.speech.create(
+                model="gpt-4o-mini-tts",
+                voice="alloy",
+                input=st.session_state.story
+            )
+        st.audio(audio.content)
+
+    st.markdown("---")
+
+    # PDF Download
+    if st.button("Download Story as PDF"):
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+        style = styles["Normal"]
+
+        elements.append(Paragraph(st.session_state.story.replace("\n", "<br/>"), style))
+        elements.append(Spacer(1, 12))
+
+        doc.build(elements)
+        buffer.seek(0)
+
+        st.download_button(
+            label="Download PDF",
+            data=buffer,
+            file_name="story.pdf",
+            mime="application/pdf"
         )
 
-        # PDF Download
-        if st.button("Download as PDF"):
-            buffer = io.BytesIO()
-            doc = SimpleDocTemplate(buffer, pagesize=letter)
-            elements = []
-            styles = getSampleStyleSheet()
-            style = styles["Normal"]
-            elements.append(Paragraph(st.session_state.story.replace("\n", "<br/>"), style))
-            elements.append(Spacer(1, 12))
-            doc.build(elements)
-            buffer.seek(0)
+    st.markdown("---")
 
-            st.download_button(
-                label="Download PDF",
-                data=buffer,
-                file_name="story.pdf",
-                mime="application/pdf"
-            )
-
-    # -------- IMAGE TAB --------
-    with tab2:
-        if st.button("Generate Illustration"):
-            with st.spinner("Illustrating the scene..."):
-                image = client.images.generate(
-                    model="gpt-image-1",
-                    prompt="Children's book illustration of this story scene, storybook style",
-                    size="1024x1024"
-                )
-            st.image(image.data[0].url, use_column_width=True)
-
-    # -------- AUDIO TAB --------
-    with tab3:
-        if st.button("Play Narration"):
-            with st.spinner("Narrating..."):
-                audio = client.audio.speech.create(
-                    model="gpt-4o-mini-tts",
-                    voice="alloy",
-                    input=st.session_state.story
-                )
-            st.audio(audio.content)
-
-    # -------- CONTINUE TAB --------
-    with tab4:
-        st.subheader("Choose how the story continues")
-
-        if st.button("Continue with Choice 1"):
-            with st.spinner("Turning the page..."):
-                continuation = client.chat.completions.create(
-                    model="gpt-5.2",
-                    messages=[{
-                        "role": "user",
-                        "content": f"Continue the following story in 150 words based on Choice 1:\n{st.session_state.story}"
-                    }]
-                )
-            cont_text = continuation.choices[0].message.content
-            st.markdown(
-                f"<div class='story-box'>{cont_text}</div>",
-                unsafe_allow_html=True
-            )
-
-        if st.button("Continue with Choice 2"):
-            with st.spinner("Turning the page..."):
-                continuation = client.chat.completions.create(
-                    model="gpt-5.2",
-                    messages=[{
-                        "role": "user",
-                        "content": f"Continue the following story in 150 words based on Choice 2:\n{st.session_state.story}"
-                    }]
-                )
-            cont_text = continuation.choices[0].message.content
-            st.markdown(
-                f"<div class='story-box'>{cont_text}</div>",
-                unsafe_allow_html=True
-            )
-
-    # -------- HISTORY TAB --------
-    with tab5:
-        st.subheader("Story History")
-        if st.session_state.history:
-            for i, past_story in enumerate(st.session_state.history[::-1]):
-                st.markdown(f"### Story {len(st.session_state.history)-i}")
-                st.markdown(
-                    f"<div class='story-box'>{past_story}</div>",
-                    unsafe_allow_html=True
-                )
-        else:
-            st.write("No previous stories yet.")
-
-    # -------- EXIT TAB --------
-    with tab6:
-        st.warning("Return to story settings?")
-        if st.button("Exit Story"):
-            st.session_state.page = "home"
-            st.session_state.story = None
-            st.rerun()
+    # Exit
+    if st.button("Exit Story"):
+        st.session_state.page = "home"
+        st.session_state.story = None
+        st.rerun()
