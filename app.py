@@ -113,7 +113,6 @@ Use short sentences.
             ],
         )
 
-        # Store first page
         st.session_state.pages = [response.choices[0].message.content]
         st.session_state.page_index = 0
         st.session_state.turn_count = 1
@@ -121,71 +120,18 @@ Use short sentences.
         st.rerun()
 
 # ---------------- READING PAGE ----------------
-if st.session_state.turn_count < MAX_TURNS:
+elif st.session_state.page == "reading":
 
-    col1, col2 = st.columns(2)
+    st.title("Your Story")
 
-    with col1:
-        choice1_clicked = st.button("Continue with Choice 1")
+    current_text = st.session_state.pages[st.session_state.page_index]
 
-    with col2:
-        choice2_clicked = st.button("Continue with Choice 2")
+    st.markdown(
+        f"<div class='story-box'>{current_text}</div>",
+        unsafe_allow_html=True
+    )
 
-    if choice1_clicked or choice2_clicked:
-
-        selected_choice = "Choice 1" if choice1_clicked else "Choice 2"
-
-        # --------- IMPORTANT: Delete future pages (Branch Reset) ---------
-        st.session_state.pages = st.session_state.pages[:st.session_state.page_index + 1]
-
-        is_final_turn = (st.session_state.turn_count + 1 == MAX_TURNS)
-
-        current_text = st.session_state.pages[st.session_state.page_index]
-
-        if not is_final_turn:
-            continuation_prompt = f"""
-Continue ONLY from {selected_choice}.
-Do NOT restart the story.
-Do NOT repeat earlier content.
-Write about 150 words.
-
-Include new:
-Choice 1:
-Choice 2:
-
-Previous page:
-{current_text}
-"""
-        else:
-            continuation_prompt = f"""
-Continue ONLY from {selected_choice}.
-Do NOT restart the story.
-Write about 150 words.
-
-Conclude clearly.
-Do NOT include new choices.
-End with a positive moral.
-
-Previous page:
-{current_text}
-"""
-
-        continuation = client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0.7,
-            messages=[
-                {"role": "system", "content": system_role},
-                {"role": "user", "content": continuation_prompt}
-            ],
-        )
-
-        st.session_state.pages.append(
-            continuation.choices[0].message.content
-        )
-
-        st.session_state.page_index = len(st.session_state.pages) - 1
-        st.session_state.turn_count += 1
-        st.rerun()
+    st.markdown("---")
 
     # ---------------- Back Button ----------------
     if st.session_state.page_index > 0:
@@ -193,33 +139,31 @@ Previous page:
             st.session_state.page_index -= 1
             st.rerun()
 
-    # Only allow continuation if on latest page
-    on_latest_page = (
-        st.session_state.page_index == len(st.session_state.pages) - 1
-    )
-
-    if on_latest_page and st.session_state.turn_count < MAX_TURNS:
+    # ---------------- Continue Logic ----------------
+    if st.session_state.turn_count < MAX_TURNS:
 
         col1, col2 = st.columns(2)
 
         with col1:
-            choice1 = st.button("Continue with Choice 1")
+            choice1_clicked = st.button("Continue with Choice 1")
 
         with col2:
-            choice2 = st.button("Continue with Choice 2")
+            choice2_clicked = st.button("Continue with Choice 2")
 
-        if choice1 or choice2:
+        if choice1_clicked or choice2_clicked:
 
-            selected_choice = "Choice 1" if choice1 else "Choice 2"
-            is_final_turn = (
-                st.session_state.turn_count + 1 == MAX_TURNS
-            )
+            selected_choice = "Choice 1" if choice1_clicked else "Choice 2"
+
+            # --------- Branch Reset (Option B) ---------
+            st.session_state.pages = st.session_state.pages[:st.session_state.page_index + 1]
+
+            is_final_turn = (st.session_state.turn_count + 1 == MAX_TURNS)
 
             if not is_final_turn:
                 continuation_prompt = f"""
 Continue ONLY from {selected_choice}.
 Do NOT restart the story.
-Write around 150 words.
+Write about 150 words.
 
 Include new:
 Choice 1:
@@ -232,7 +176,7 @@ Previous page:
                 continuation_prompt = f"""
 Continue ONLY from {selected_choice}.
 Do NOT restart the story.
-Write around 150 words.
+Write about 150 words.
 
 Conclude clearly.
 Do NOT include new choices.
@@ -251,17 +195,20 @@ Previous page:
                 ],
             )
 
-            # Add new page instead of replacing
             st.session_state.pages.append(
                 continuation.choices[0].message.content
             )
+
             st.session_state.page_index = len(st.session_state.pages) - 1
             st.session_state.turn_count += 1
             st.rerun()
 
     # ---------------- Ending ----------------
-    if on_latest_page and st.session_state.turn_count >= MAX_TURNS:
+    if st.session_state.turn_count >= MAX_TURNS and \
+       st.session_state.page_index == len(st.session_state.pages) - 1:
+
         st.markdown("### 🌟 The End")
+
         if st.button("Start New Story"):
             st.session_state.page = "home"
             st.session_state.pages = []
@@ -283,6 +230,7 @@ Previous page:
 
     # ---------------- PDF Export (Full Story) ----------------
     if st.button("Download Story as PDF"):
+
         full_story = "\n\n".join(st.session_state.pages)
 
         buffer = io.BytesIO()
@@ -304,4 +252,3 @@ Previous page:
             file_name="story.pdf",
             mime="application/pdf"
         )
-
