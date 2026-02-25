@@ -20,6 +20,9 @@ if "story" not in st.session_state:
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
+if "turn_count" not in st.session_state:
+    st.session_state.turn_count = 0
+
 # ---------------- Dark Mode ----------------
 mode_label = "🌙 Dark Mode" if not st.session_state.dark_mode else "☀ Light Mode"
 st.session_state.dark_mode = st.toggle(mode_label, value=st.session_state.dark_mode)
@@ -65,12 +68,8 @@ body {{ background-color: {bg}; }}
 # ---------------- Predefined Structures ----------------
 
 THEMES = [
-    "Fairness",
-    "Courage",
-    "Kindness",
-    "Friendship",
-    "Responsibility",
-    "Environmental Care"
+    "Fairness", "Courage", "Kindness",
+    "Friendship", "Responsibility", "Environmental Care"
 ]
 
 TEMPLATES = {
@@ -103,24 +102,17 @@ TEMPLATES = {
 GENDERS = ["Girl", "Boy", "Non-binary", "Prefer not to specify"]
 
 CULTURES = [
-    "African",
-    "Asian",
-    "European",
-    "Middle Eastern",
-    "Latin American",
-    "Indigenous",
-    "Mixed",
-    "Prefer not to specify"
+    "African", "Asian", "European",
+    "Middle Eastern", "Latin American",
+    "Indigenous", "Mixed", "Prefer not to specify"
 ]
 
 PERSONALITIES = [
-    "Brave",
-    "Curious",
-    "Kind",
-    "Shy",
-    "Clever",
-    "Determined"
+    "Brave", "Curious", "Kind",
+    "Shy", "Clever", "Determined"
 ]
+
+MAX_TURNS = 3
 
 # ---------------- HOME PAGE ----------------
 if st.session_state.page == "home":
@@ -145,16 +137,17 @@ if st.session_state.page == "home":
 
     if submit and character_name:
 
+        st.session_state.turn_count = 1
+
         system_prompt = """
 You are an expert children's storyteller and developmental psychologist.
-You produce age-appropriate, inclusive, culturally sensitive stories.
-Maintain narrative coherence and moral clarity.
+Produce age-appropriate, inclusive, culturally sensitive stories.
 Avoid stereotypes.
-Keep vocabulary aligned with specified age group.
+Maintain structural clarity.
 """
 
         user_prompt = f"""
-Generate a 300-word interactive children's story using the structured inputs below.
+Generate a 300-word interactive children's story using the inputs below.
 
 Age Group: {age_group}
 Theme: {theme}
@@ -171,7 +164,6 @@ Requirements:
 - Include clearly labeled: "Choice 1:" and "Choice 2:"
 - Short sentences
 - Age-appropriate vocabulary
-- Clear moral resolution
 """
 
         with st.spinner("Creating your story..."):
@@ -200,30 +192,37 @@ elif st.session_state.page == "reading":
 
     st.markdown("---")
 
-    # Continuation Logic
-    choice = st.radio("Continue with:", ["Choice 1", "Choice 2"])
+    # Only show choices if under max turns
+    if st.session_state.turn_count < MAX_TURNS:
 
-    if st.button("Continue Story"):
+        choice = st.radio("Continue with:", ["Choice 1", "Choice 2"])
 
-        continuation_prompt = f"""
+        if st.button("Continue Story"):
+
+            continuation_prompt = f"""
 Continue this children's story in 150 words based on {choice}.
-Keep tone consistent.
-Maintain age-appropriate language.
-Ensure moral clarity.
+If this is the final continuation, conclude the story clearly and do not include new choices.
 
 Story:
 {st.session_state.story}
 """
 
-        with st.spinner("Continuing..."):
-            continuation = client.chat.completions.create(
-                model="gpt-4o-mini",
-                temperature=0.7,
-                messages=[{"role": "user", "content": continuation_prompt}]
-            )
+            with st.spinner("Continuing..."):
+                continuation = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    temperature=0.7,
+                    messages=[
+                        {"role": "user", "content": continuation_prompt}
+                    ]
+                )
 
-        st.session_state.story = continuation.choices[0].message.content
-        st.rerun()
+            st.session_state.story = continuation.choices[0].message.content
+            st.session_state.turn_count += 1
+            st.rerun()
+
+    else:
+        st.markdown("### 🌟 The End")
+        st.info("The story has concluded. Start a new adventure anytime!")
 
     st.markdown("---")
 
@@ -264,4 +263,5 @@ Story:
     if st.button("Exit Story"):
         st.session_state.page = "home"
         st.session_state.story = None
+        st.session_state.turn_count = 0
         st.rerun()
