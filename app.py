@@ -192,16 +192,39 @@ elif st.session_state.page == "reading":
 
     st.markdown("---")
 
-    # Continue section only if story not finished
+    # If not final turn
     if st.session_state.turn_count < MAX_TURNS:
 
         choice = st.radio("Continue with:", ["Choice 1", "Choice 2"])
 
         if st.button("Continue Story"):
 
-            continuation_prompt = f"""
+            # Check if next turn is final
+            is_final_turn = (st.session_state.turn_count + 1 == MAX_TURNS)
+
+            if not is_final_turn:
+                continuation_prompt = f"""
 Continue this children's story in 150 words based on {choice}.
-If this is the final continuation, conclude clearly and do not include new choices.
+
+Include clearly labeled:
+"Choice 1:"
+"Choice 2:"
+
+Maintain short sentences.
+Keep vocabulary age-appropriate.
+
+Story:
+{st.session_state.story}
+"""
+            else:
+                continuation_prompt = f"""
+Continue this children's story in 150 words based on {choice}.
+
+Conclude the story clearly.
+Do NOT include new choices.
+End with a positive resolution.
+
+Maintain age-appropriate language.
 
 Story:
 {st.session_state.story}
@@ -220,11 +243,11 @@ Story:
             st.session_state.turn_count += 1
             st.rerun()
 
+    # Final screen
     else:
         st.markdown("### 🌟 The End")
         st.info("The story has concluded.")
 
-        # ✅ Exit button ONLY appears here
         if st.button("Start New Story"):
             st.session_state.page = "home"
             st.session_state.story = None
@@ -270,4 +293,5 @@ Story:
         st.session_state.story = None
         st.session_state.turn_count = 0
         st.rerun()
+
 
