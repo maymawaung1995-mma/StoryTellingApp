@@ -28,6 +28,15 @@ if "turn_count" not in st.session_state:
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
+
+# ---------------- Reset Function ----------------
+def reset_story():
+    st.session_state.page = "home"
+    st.session_state.pages = []
+    st.session_state.page_index = 0
+    st.session_state.turn_count = 0
+
+
 # ---------------- System Role (V3) ----------------
 system_role = """
 You are a children's educational storyteller.
@@ -122,7 +131,15 @@ Use short sentences.
 # ---------------- READING PAGE ----------------
 elif st.session_state.page == "reading":
 
-    st.title("Your Story")
+    # Exit Button at Top
+    col_exit, col_title = st.columns([1, 4])
+    with col_exit:
+        if st.button("🏠 Exit to Main Menu"):
+            reset_story()
+            st.rerun()
+
+    with col_title:
+        st.title("Your Story")
 
     current_text = st.session_state.pages[st.session_state.page_index]
 
@@ -154,7 +171,6 @@ elif st.session_state.page == "reading":
 
             selected_choice = "Choice 1" if choice1_clicked else "Choice 2"
 
-            # --------- Branch Reset (Option B) ---------
             st.session_state.pages = st.session_state.pages[:st.session_state.page_index + 1]
 
             is_final_turn = (st.session_state.turn_count + 1 == MAX_TURNS)
@@ -209,16 +225,9 @@ Previous page:
 
         st.markdown("### 🌟 The End")
 
-        if st.button("Start New Story"):
-            st.session_state.page = "home"
-            st.session_state.pages = []
-            st.session_state.page_index = 0
-            st.session_state.turn_count = 0
-            st.rerun()
-
     st.markdown("---")
 
-    # ---------------- TTS (Full Story) ----------------
+    # ---------------- TTS ----------------
     if st.button("🎧 Play Narration"):
         full_story = "\n\n".join(st.session_state.pages)
         audio = client.audio.speech.create(
@@ -228,7 +237,7 @@ Previous page:
         )
         st.audio(audio.content)
 
-    # ---------------- PDF Export (Full Story) ----------------
+    # ---------------- PDF Export ----------------
     if st.button("Download Story as PDF"):
 
         full_story = "\n\n".join(st.session_state.pages)
