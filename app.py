@@ -150,14 +150,21 @@ elif st.session_state.page == "reading":
 
             if not is_final_turn:
                 continuation_prompt = f"""
-Continue the story following the events described in {selected_choice}.
+Continue ONLY from the consequences of {selected_choice}.
+Do NOT restart the story.
+Do NOT repeat the introduction.
+Do NOT restate previous choices.
 
-Develop consequences of that decision.
-Include clearly labeled:
-Choice 1:
-Choice 2:
+If not final turn:
+- Provide new Choice 1:
+- Provide new Choice 2:
 
-Maintain age-appropriate language.
+If final turn:
+- Conclude clearly.
+- Do NOT provide new choices.
+
+Previous story:
+{st.session_state.story}
 """
             else:
                 continuation_prompt = f"""
@@ -178,7 +185,7 @@ End with a positive moral resolution.
                     ]
                 )
 
-            st.session_state.story = continuation.choices[0].message.content
+            st.session_state.story += "\n\n" + continuation.choices[0].message.content
             st.session_state.turn_count += 1
             st.rerun()
 
@@ -220,4 +227,5 @@ End with a positive moral resolution.
             file_name="story.pdf",
             mime="application/pdf"
         )
+
 
