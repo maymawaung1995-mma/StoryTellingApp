@@ -17,17 +17,19 @@ if "page" not in st.session_state:
 if "story" not in st.session_state:
     st.session_state.story = None
 
+if "turn_count" not in st.session_state:
+    st.session_state.turn_count = 0
+
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
-if "turn_count" not in st.session_state:
-    st.session_state.turn_count = 0
+MAX_TURNS = 3
 
 # ---------------- Dark Mode ----------------
 mode_label = "🌙 Dark Mode" if not st.session_state.dark_mode else "☀ Light Mode"
 st.session_state.dark_mode = st.toggle(mode_label, value=st.session_state.dark_mode)
 
-# ---------------- Theme Styling ----------------
+# ---------------- Styling ----------------
 if st.session_state.dark_mode:
     bg = "#1e1e1e"
     text = "#f5f5f5"
@@ -39,9 +41,6 @@ else:
 
 st.markdown(f"""
 <style>
-body {{ background-color: {bg}; }}
-.main {{ background-color: {bg}; }}
-
 .block-container {{
     max-width: 700px;
     margin: auto;
@@ -52,69 +51,14 @@ body {{ background-color: {bg}; }}
     padding: 35px;
     border-radius: 12px;
     font-size: 20px;
-    line-height: 1.9;
+    line-height: 1.8;
     font-family: Georgia, serif;
     color: {text};
-}}
-
-.stButton>button {{
-    font-size: 16px;
-    padding: 12px;
-    width: 100%;
 }}
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- Configurations ----------------
-
-THEMES = [
-    "Fairness", "Courage", "Kindness",
-    "Friendship", "Responsibility", "Environmental Care"
-]
-
-TEMPLATES = {
-    "Classic Moral Tale": """
-1. Warm introduction
-2. Clear moral conflict
-3. Rising challenge
-4. Two decision points (Choice 1 / Choice 2)
-5. Positive resolution
-6. Explicit moral takeaway
-""",
-    "Interactive Adventure": """
-1. Exciting beginning
-2. Unexpected challenge
-3. Choice 1 (action-based)
-4. Escalation
-5. Choice 2 (problem-solving)
-6. Satisfying ending
-""",
-    "Problem-Solving Story": """
-1. Everyday situation
-2. Problem appears
-3. Choice 1 (collaboration)
-4. Choice 2 (creative thinking)
-5. Resolution
-6. Reflection
-"""
-}
-
-GENDERS = ["Girl", "Boy", "Non-binary", "Prefer not to specify"]
-
-CULTURES = [
-    "African", "Asian", "European",
-    "Middle Eastern", "Latin American",
-    "Indigenous", "Mixed", "Prefer not to specify"
-]
-
-PERSONALITIES = [
-    "Brave", "Curious", "Kind",
-    "Shy", "Clever", "Determined"
-]
-
-MAX_TURNS = 3
-
-# ---------------- HOME PAGE ----------------
+# ---------------- Home Page ----------------
 if st.session_state.page == "home":
 
     st.title("The Enchanted Reader")
@@ -123,15 +67,9 @@ if st.session_state.page == "home":
     with st.form("story_form"):
 
         age_group = st.selectbox("Choose Age Group", ["4-6", "7-9", "10-12"])
-        theme = st.selectbox("Select Story Theme", THEMES)
-        template_choice = st.selectbox("Select Narrative Template", list(TEMPLATES.keys()))
-
+        theme = st.selectbox("Theme", ["Fairness", "Kindness", "Courage"])
         character_name = st.text_input("Main Character Name")
-        gender = st.selectbox("Character Gender", GENDERS)
-        culture = st.selectbox("Cultural Background", CULTURES)
-        personality = st.selectbox("Personality Trait", PERSONALITIES)
-
-        temperature = st.slider("Creativity Level (Temperature)", 0.2, 1.0, 0.7, 0.1)
+        temperature = st.slider("Creativity Level", 0.2, 1.0, 0.7, 0.1)
 
         submit = st.form_submit_button("Generate Story")
 
@@ -139,31 +77,33 @@ if st.session_state.page == "home":
 
         st.session_state.turn_count = 1
 
-        system_prompt = """
-You are an expert children's storyteller and developmental psychologist.
-Produce age-appropriate, inclusive, culturally sensitive stories.
-Avoid stereotypes.
-Maintain narrative coherence and moral clarity.
+        # ----------- V3 SYSTEM ROLE -----------
+        system_role = f"""
+You are a children's educational storyteller.
+Follow strict narrative structure.
+Ensure moral clarity.
+Keep language suitable for children aged {age_group}.
+Include structured branching correctly.
+Avoid repetition of choices.
 """
 
+        # ----------- V3 USER PROMPT -----------
         user_prompt = f"""
-Generate exactly 300 words.
+Write exactly 300 words.
 
-Age Group: {age_group}
+Create an interactive story for children aged {age_group}.
 Theme: {theme}
-Narrative Structure:
-{TEMPLATES[template_choice]}
+Main character: {character_name}
 
-Main Character Name: {character_name}
-Gender: {gender}
-Cultural Background: {culture}
-Personality Trait: {personality}
+Structure:
+- Opening paragraph
+- Clear moral problem
+- Rising tension
+- Clearly labeled Choice 1:
+- Clearly labeled Choice 2:
 
-Requirements:
-- Exactly 300 words
-- Include clearly labeled: "Choice 1:" and "Choice 2:"
-- Short sentences
-- Age-appropriate vocabulary
+Use short sentences.
+Ensure educational value.
 """
 
         with st.spinner("Creating your story..."):
@@ -171,7 +111,7 @@ Requirements:
                 model="gpt-4o-mini",
                 temperature=temperature,
                 messages=[
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": system_role},
                     {"role": "user", "content": user_prompt}
                 ],
             )
@@ -180,7 +120,7 @@ Requirements:
         st.session_state.page = "reading"
         st.rerun()
 
-# ---------------- READING PAGE ----------------
+# ---------------- Reading Page ----------------
 elif st.session_state.page == "reading":
 
     st.title("Your Story")
@@ -192,50 +132,49 @@ elif st.session_state.page == "reading":
 
     st.markdown("---")
 
-    # If not final turn
+    # ----------- Continuation Logic -----------
     if st.session_state.turn_count < MAX_TURNS:
 
-        choice = st.radio("Continue with:", ["Choice 1", "Choice 2"])
+        col1, col2 = st.columns(2)
 
-        if st.button("Continue Story"):
+        with col1:
+            choice1_clicked = st.button("Continue with Choice 1")
 
-            # Check if next turn is final
+        with col2:
+            choice2_clicked = st.button("Continue with Choice 2")
+
+        if choice1_clicked or choice2_clicked:
+
+            selected_choice = "Choice 1" if choice1_clicked else "Choice 2"
             is_final_turn = (st.session_state.turn_count + 1 == MAX_TURNS)
 
             if not is_final_turn:
                 continuation_prompt = f"""
-Continue this children's story in 150 words based on {choice}.
+Continue the story following the events described in {selected_choice}.
 
+Develop consequences of that decision.
 Include clearly labeled:
-"Choice 1:"
-"Choice 2:"
+Choice 1:
+Choice 2:
 
-Maintain short sentences.
-Keep vocabulary age-appropriate.
-
-Story:
-{st.session_state.story}
+Maintain age-appropriate language.
 """
             else:
                 continuation_prompt = f"""
-Continue this children's story in 150 words based on {choice}.
+Continue the story following the events described in {selected_choice}.
 
-Conclude the story clearly.
+Conclude clearly.
 Do NOT include new choices.
-End with a positive resolution.
-
-Maintain age-appropriate language.
-
-Story:
-{st.session_state.story}
+End with a positive moral resolution.
 """
 
-            with st.spinner("Continuing..."):
+            with st.spinner("Continuing story..."):
                 continuation = client.chat.completions.create(
                     model="gpt-4o-mini",
                     temperature=0.7,
                     messages=[
-                        {"role": "user", "content": continuation_prompt}
+                        {"role": "system", "content": system_role},
+                        {"role": "user", "content": continuation_prompt + "\n\n" + st.session_state.story}
                     ]
                 )
 
@@ -243,30 +182,26 @@ Story:
             st.session_state.turn_count += 1
             st.rerun()
 
-    # Final screen
     else:
         st.markdown("### 🌟 The End")
-        st.info("The story has concluded.")
-
         if st.button("Start New Story"):
             st.session_state.page = "home"
             st.session_state.story = None
             st.session_state.turn_count = 0
             st.rerun()
 
-    # Text-to-Speech
-    if st.button("🎧 Play Narration"):
-        with st.spinner("Narrating..."):
-            audio = client.audio.speech.create(
-                model="gpt-4o-mini-tts",
-                voice="alloy",
-                input=st.session_state.story
-            )
-        st.audio(audio.content)
-
     st.markdown("---")
 
-    # PDF Export
+    # ----------- Text to Speech -----------
+    if st.button("🎧 Play Narration"):
+        audio = client.audio.speech.create(
+            model="gpt-4o-mini-tts",
+            voice="alloy",
+            input=st.session_state.story
+        )
+        st.audio(audio.content)
+
+    # ----------- PDF Export -----------
     if st.button("Download Story as PDF"):
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter)
@@ -285,13 +220,3 @@ Story:
             file_name="story.pdf",
             mime="application/pdf"
         )
-
-    st.markdown("---")
-
-    if st.button("Exit Story"):
-        st.session_state.page = "home"
-        st.session_state.story = None
-        st.session_state.turn_count = 0
-        st.rerun()
-
-
