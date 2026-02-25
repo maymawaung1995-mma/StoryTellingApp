@@ -192,8 +192,8 @@ elif st.session_state.page == "reading":
 
     st.markdown("---")
 
-    # Continue section only if under max turns
-    if st.session_state.story and st.session_state.turn_count < MAX_TURNS:
+    # Continue section only if story not finished
+    if st.session_state.turn_count < MAX_TURNS:
 
         choice = st.radio("Continue with:", ["Choice 1", "Choice 2"])
 
@@ -222,9 +222,14 @@ Story:
 
     else:
         st.markdown("### 🌟 The End")
-        st.info("The story has concluded. Start a new adventure anytime!")
+        st.info("The story has concluded.")
 
-    st.markdown("---")
+        # ✅ Exit button ONLY appears here
+        if st.button("Start New Story"):
+            st.session_state.page = "home"
+            st.session_state.story = None
+            st.session_state.turn_count = 0
+            st.rerun()
 
     # Text-to-Speech
     if st.button("🎧 Play Narration"):
@@ -265,3 +270,4 @@ Story:
         st.session_state.story = None
         st.session_state.turn_count = 0
         st.rerun()
+
