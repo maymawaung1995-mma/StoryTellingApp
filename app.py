@@ -65,7 +65,7 @@ body {{ background-color: {bg}; }}
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- Predefined Structures ----------------
+# ---------------- Configurations ----------------
 
 THEMES = [
     "Fairness", "Courage", "Kindness",
@@ -143,11 +143,11 @@ if st.session_state.page == "home":
 You are an expert children's storyteller and developmental psychologist.
 Produce age-appropriate, inclusive, culturally sensitive stories.
 Avoid stereotypes.
-Maintain structural clarity.
+Maintain narrative coherence and moral clarity.
 """
 
         user_prompt = f"""
-Generate a 300-word interactive children's story using the inputs below.
+Generate exactly 300 words.
 
 Age Group: {age_group}
 Theme: {theme}
@@ -192,8 +192,8 @@ elif st.session_state.page == "reading":
 
     st.markdown("---")
 
-    # Only show choices if under max turns
-    if st.session_state.turn_count < MAX_TURNS:
+    # Continue section only if under max turns
+    if st.session_state.story and st.session_state.turn_count < MAX_TURNS:
 
         choice = st.radio("Continue with:", ["Choice 1", "Choice 2"])
 
@@ -201,7 +201,7 @@ elif st.session_state.page == "reading":
 
             continuation_prompt = f"""
 Continue this children's story in 150 words based on {choice}.
-If this is the final continuation, conclude the story clearly and do not include new choices.
+If this is the final continuation, conclude clearly and do not include new choices.
 
 Story:
 {st.session_state.story}
