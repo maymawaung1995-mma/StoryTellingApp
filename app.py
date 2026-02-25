@@ -121,18 +121,71 @@ Use short sentences.
         st.rerun()
 
 # ---------------- READING PAGE ----------------
-elif st.session_state.page == "reading":
+if st.session_state.turn_count < MAX_TURNS:
 
-    st.title("Your Story")
+    col1, col2 = st.columns(2)
 
-    current_text = st.session_state.pages[st.session_state.page_index]
+    with col1:
+        choice1_clicked = st.button("Continue with Choice 1")
 
-    st.markdown(
-        f"<div class='story-box'>{current_text}</div>",
-        unsafe_allow_html=True
-    )
+    with col2:
+        choice2_clicked = st.button("Continue with Choice 2")
 
-    st.markdown("---")
+    if choice1_clicked or choice2_clicked:
+
+        selected_choice = "Choice 1" if choice1_clicked else "Choice 2"
+
+        # --------- IMPORTANT: Delete future pages (Branch Reset) ---------
+        st.session_state.pages = st.session_state.pages[:st.session_state.page_index + 1]
+
+        is_final_turn = (st.session_state.turn_count + 1 == MAX_TURNS)
+
+        current_text = st.session_state.pages[st.session_state.page_index]
+
+        if not is_final_turn:
+            continuation_prompt = f"""
+Continue ONLY from {selected_choice}.
+Do NOT restart the story.
+Do NOT repeat earlier content.
+Write about 150 words.
+
+Include new:
+Choice 1:
+Choice 2:
+
+Previous page:
+{current_text}
+"""
+        else:
+            continuation_prompt = f"""
+Continue ONLY from {selected_choice}.
+Do NOT restart the story.
+Write about 150 words.
+
+Conclude clearly.
+Do NOT include new choices.
+End with a positive moral.
+
+Previous page:
+{current_text}
+"""
+
+        continuation = client.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0.7,
+            messages=[
+                {"role": "system", "content": system_role},
+                {"role": "user", "content": continuation_prompt}
+            ],
+        )
+
+        st.session_state.pages.append(
+            continuation.choices[0].message.content
+        )
+
+        st.session_state.page_index = len(st.session_state.pages) - 1
+        st.session_state.turn_count += 1
+        st.rerun()
 
     # ---------------- Back Button ----------------
     if st.session_state.page_index > 0:
@@ -251,3 +304,4 @@ Previous page:
             file_name="story.pdf",
             mime="application/pdf"
         )
+
