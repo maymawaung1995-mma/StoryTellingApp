@@ -25,6 +25,15 @@ if "dark_mode" not in st.session_state:
 
 MAX_TURNS = 3
 
+system_role = """
+You are a children's educational storyteller.
+Follow strict narrative structure.
+Ensure moral clarity.
+Keep language age-appropriate.
+Avoid repeating choices.
+Maintain coherence across continuations.
+"""
+
 # ---------------- Dark Mode ----------------
 mode_label = "🌙 Dark Mode" if not st.session_state.dark_mode else "☀ Light Mode"
 st.session_state.dark_mode = st.toggle(mode_label, value=st.session_state.dark_mode)
@@ -77,15 +86,6 @@ if st.session_state.page == "home":
 
         st.session_state.turn_count = 1
 
-        # ----------- V3 SYSTEM ROLE -----------
-        system_role = f"""
-You are a children's educational storyteller.
-Follow strict narrative structure.
-Ensure moral clarity.
-Keep language suitable for children aged {age_group}.
-Include structured branching correctly.
-Avoid repetition of choices.
-"""
 
         # ----------- V3 USER PROMPT -----------
         user_prompt = f"""
@@ -220,3 +220,4 @@ End with a positive moral resolution.
             file_name="story.pdf",
             mime="application/pdf"
         )
+
